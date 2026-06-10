@@ -8,7 +8,12 @@ from datetime import datetime, date
 app = Flask(__name__)
 app.secret_key = 'sipms-rem0beg-2024-secret'
 
-DB_PATH = 'sipms.db'
+# Render.com has a read-only filesystem except /tmp
+# Use /tmp for the DB when running on Render, local file otherwise
+if os.environ.get('RENDER'):
+    DB_PATH = '/tmp/sipms.db'
+else:
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sipms.db')
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
