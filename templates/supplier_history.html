@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ supplier['supplier_name'] }} History{% endblock %}
+{% block page_title %}{{ supplier['supplier_name'] }}{% endblock %}
+{% block page_subtitle %}Purchase history and linked products{% endblock %}
+
+{% block content %}
+
+<div class="mb-3">
+  <a href="/suppliers" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Suppliers
+  </a>
+</div>
+
+<!-- Supplier info card -->
+<div class="card mb-4">
+  <div class="card-body d-flex gap-4 flex-wrap">
+    <div><div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase">Email</div><div>{{ supplier['email'] or '—' }}</div></div>
+    <div><div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase">Phone</div><div>{{ supplier['phone'] or '—' }}</div></div>
+    <div><div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase">Address</div><div>{{ supplier['address'] or '—' }}</div></div>
+    <div><div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase">Since</div><div>{{ supplier['created_at'][:10] }}</div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Purchase Orders -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-receipt me-2"></i>Purchase Orders</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>PO #</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>
+          <tbody>
+            {% for po in pos %}
+            <tr>
+              <td class="fw-600">PO-{{ po['po_id'] }}</td>
+              <td>{{ po['order_date'] }}</td>
+              <td><span class="badge badge-{{ po['status']|lower }}">{{ po['status'] }}</span></td>
+              <td>R{{ "{:,.2f}".format(po['total_amount']) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-3">No purchase orders yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linked Products -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-box-seam me-2"></i>Linked Products</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Product</th><th>Stock</th><th>Cost</th></tr></thead>
+          <tbody>
+            {% for p in products %}
+            <tr>
+              <td class="fw-600">{{ p['product_name'] }}</td>
+              <td>{{ p['quantity'] }}</td>
+              <td>R{{ "{:,.2f}".format(p['cost_price']) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-3">No products linked.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Transactions{% endblock %}
+{% block page_title %}Inventory Transactions{% endblock %}
+{% block page_subtitle %}Full audit trail of every stock movement{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTxnModal">
+    <i class="bi bi-plus-lg me-1"></i> Record Movement
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr><th>#</th><th>Product</th><th>Type</th><th>Qty</th><th>Reference</th><th>Notes</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td class="text-muted" style="font-size:12px">{{ t['transaction_id'] }}</td>
+          <td class="fw-600">{{ t['product_name'] }}</td>
+          <td>
+            <span class="badge badge-{{ t['transaction_type']|lower }}">
+              {{ t['transaction_type'] }}
+            </span>
+          </td>
+          <td class="fw-700 {{ 'text-success' if t['transaction_type'] == 'Received' else 'text-danger' if t['transaction_type'] == 'Issued' else '' }}">
+            {{ '+' if t['transaction_type'] == 'Received' else '-' if t['transaction_type'] == 'Issued' else '~' }}{{ t['quantity'] }}
+          </td>
+          <td style="font-size:12px;color:#64748b">{{ t['reference'] or '—' }}</td>
+          <td style="font-size:12px;color:#64748b">{{ t['notes'] or '—' }}</td>
+          <td style="font-size:12px;color:#64748b">{{ t['transaction_date'][:16] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No transactions recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal fade" id="addTxnModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="/transactions/add">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Record Stock Movement</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Product <span class="text-danger">*</span></label>
+            <select name="product_id" class="form-select" required>
+              <option value="">Select product…</option>
+              {% for p in products %}
+                <option value="{{ p['product_id'] }}">{{ p['product_name'] }} (stock: {{ p['quantity'] }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Type <span class="text-danger">*</span></label>
+              <select name="transaction_type" class="form-select" required>
+                <option value="Received">Received (stock in ↑)</option>
+                <option value="Issued">Issued (stock out ↓)</option>
+                <option value="Adjustment">Adjustment</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Quantity <span class="text-danger">*</span></label>
+              <input type="number" name="quantity" class="form-control" min="1" required/>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Reference</label>
+            <input type="text" name="reference" class="form-control" placeholder="e.g. PO-007, REQ-003"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Notes</label>
+            <textarea name="notes" class="form-control" rows="2" placeholder="Reason for movement…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check me-1"></i>Record Movement</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Live snapshot of your inventory and procurement activity{% endblock %}
+
+{% block content %}
+
+<!-- KPI CARDS -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="bi bi-box-seam-fill"></i></div>
+      <div class="kpi-value">{{ total_products }}</div>
+      <div class="kpi-label">Total Products</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#d1fae5;color:#065f46"><i class="bi bi-truck"></i></div>
+      <div class="kpi-value">{{ total_suppliers }}</div>
+      <div class="kpi-label">Suppliers</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fef3c7;color:#92400e"><i class="bi bi-receipt"></i></div>
+      <div class="kpi-value">{{ pending_pos }}</div>
+      <div class="kpi-label">Pending Orders</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fee2e2;color:#991b1b"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      <div class="kpi-value">{{ low_stock }}</div>
+      <div class="kpi-label">Low Stock Alerts</div>
+    </div>
+  </div>
+</div>
+
+<!-- FINANCIAL SUMMARY ROW -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="kpi-card d-flex align-items-center gap-4">
+      <div class="kpi-icon" style="background:#f0fdf4;color:#166534;width:52px;height:52px;font-size:22px"><i class="bi bi-currency-dollar"></i></div>
+      <div>
+        <div class="kpi-label">Total Stock Value (Cost)</div>
+        <div class="kpi-value" style="font-size:22px">R{{ "{:,.2f}".format(stock_value) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="kpi-card d-flex align-items-center gap-4">
+      <div class="kpi-icon" style="background:#fff7ed;color:#c2410c;width:52px;height:52px;font-size:22px"><i class="bi bi-clock-fill"></i></div>
+      <div>
+        <div class="kpi-label">Pending PO Value</div>
+        <div class="kpi-value" style="font-size:22px">R{{ "{:,.2f}".format(pending_value) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOW STOCK + RECENT TRANSACTIONS -->
+<div class="row g-3 mb-4">
+
+  <!-- Low Stock Alerts -->
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-exclamation-triangle text-warning me-2"></i>Low Stock Alerts</span>
+        <a href="/products" class="btn btn-sm btn-outline-secondary" style="font-size:11px">View all</a>
+      </div>
+      <div class="card-body p-0">
+        {% if low_stock_items %}
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Product</th><th>Stock</th><th>Min</th><th>Supplier</th></tr></thead>
+            <tbody>
+              {% for item in low_stock_items %}
+              <tr class="low-stock">
+                <td class="fw-600">{{ item['product_name'] }}</td>
+                <td><span class="badge bg-danger">{{ item['quantity'] }}</span></td>
+                <td class="text-muted">{{ item['reorder_level'] }}</td>
+                <td style="font-size:12px;color:#64748b">{{ item['supplier_name'] or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-check-circle-fill text-success fs-3 d-block mb-2"></i>
+            All stock levels are healthy
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-arrow-left-right me-2 text-primary"></i>Recent Stock Movements</span>
+        <a href="/transactions" class="btn btn-sm btn-outline-secondary" style="font-size:11px">View all</a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Product</th><th>Type</th><th>Qty</th><th>Ref</th><th>Date</th></tr></thead>
+          <tbody>
+            {% for t in recent_transactions %}
+            <tr>
+              <td class="fw-600">{{ t['product_name'] }}</td>
+              <td>
+                <span class="badge badge-{{ t['transaction_type']|lower }}">
+                  {{ t['transaction_type'] }}
+                </span>
+              </td>
+              <td>{{ t['quantity'] }}</td>
+              <td style="font-size:12px;color:#64748b">{{ t['reference'] or '—' }}</td>
+              <td style="font-size:12px;color:#64748b">{{ t['transaction_date'][:10] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PO SUMMARY + CATEGORY BREAKDOWN -->
+<div class="row g-3">
+
+  <!-- PO Status Summary -->
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-receipt me-2"></i>Purchase Order Status</div>
+      <div class="card-body">
+        {% for row in po_summary %}
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <span class="badge badge-{{ row['status']|lower }} me-2">{{ row['status'] }}</span>
+            <small class="text-muted">{{ row['cnt'] }} order{{ 's' if row['cnt'] != 1 }}</small>
+          </div>
+          <strong>R{{ "{:,.2f}".format(row['total']) }}</strong>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock by Category -->
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Stock Value by Category</div>
+      <div class="card-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Category</th><th>Products</th><th>Units</th><th>Value</th></tr></thead>
+          <tbody>
+            {% for cat in category_stock %}
+            <tr>
+              <td class="fw-600">{{ cat['category'] }}</td>
+              <td>{{ cat['products'] }}</td>
+              <td>{{ cat['total_qty'] }}</td>
+              <td><strong>R{{ "{:,.2f}".format(cat['value'] or 0) }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

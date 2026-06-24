@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_subtitle %}Inventory valuation, supplier spend, and procurement analytics{% endblock %}
+
+{% block content %}
+
+<!-- Summary totals -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Stock (Cost Value)</div>
+      <div class="kpi-value mt-1">R{{ "{:,.2f}".format(totals['stock_cost']) }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Stock (Sell Value)</div>
+      <div class="kpi-value mt-1" style="color:#059669">R{{ "{:,.2f}".format(totals['stock_sell']) }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Supplier Spend</div>
+      <div class="kpi-value mt-1" style="color:#dc2626">R{{ "{:,.2f}".format(totals['total_spend']) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Report tabs -->
+<ul class="nav nav-tabs mb-3" id="reportTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#inventoryTab">Inventory</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#supplierTab">Supplier Spend</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#poTab">Purchase Orders</a></li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- INVENTORY TAB -->
+  <div class="tab-pane fade show active" id="inventoryTab">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-boxes me-2"></i>Inventory Valuation</span>
+        <a href="/reports/export/inventory" class="btn btn-sm btn-outline-success">
+          <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Product</th><th>Category</th><th>Qty</th>
+                <th>Cost Price</th><th>Sell Price</th>
+                <th>Cost Value</th><th>Sell Value</th><th>Margin</th><th>Supplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in inventory_report %}
+              {% set margin = ((r['selling_price'] - r['cost_price']) / r['cost_price'] * 100) if r['cost_price'] > 0 else 0 %}
+              <tr {% if r['quantity'] == 0 %}style="opacity:.5"{% endif %}>
+                <td class="fw-600">{{ r['product_name'] }}</td>
+                <td><span class="badge bg-light text-dark border">{{ r['category'] }}</span></td>
+                <td class="fw-700">{{ r['quantity'] }}</td>
+                <td>R{{ "{:,.2f}".format(r['cost_price']) }}</td>
+                <td>R{{ "{:,.2f}".format(r['selling_price']) }}</td>
+                <td class="fw-600">R{{ "{:,.2f}".format(r['stock_cost_value'] or 0) }}</td>
+                <td class="fw-600 text-success">R{{ "{:,.2f}".format(r['stock_sell_value'] or 0) }}</td>
+                <td>
+                  <span class="badge {{ 'bg-success' if margin > 30 else 'bg-warning text-dark' if margin > 15 else 'bg-danger' }}">
+                    {{ "{:.0f}".format(margin) }}%
+                  </span>
+                </td>
+                <td style="font-size:12px;color:#64748b">{{ r['supplier_name'] or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPPLIER SPEND TAB -->
+  <div class="tab-pane fade" id="supplierTab">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-truck me-2"></i>Supplier Spend Analysis</span>
+        <a href="/reports/export/suppliers" class="btn btn-sm btn-outline-success">
+          <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Supplier</th><th>Email</th><th>Orders</th><th>Total Spend</th><th>Share</th></tr></thead>
+          <tbody>
+            {% set grand_total = totals['total_spend'] if totals['total_spend'] > 0 else 1 %}
+            {% for r in supplier_spend %}
+            {% set share = (r['total_spend'] / grand_total * 100) %}
+            <tr>
+              <td class="fw-600">{{ r['supplier_name'] }}</td>
+              <td style="font-size:13px">{{ r['email'] or '—' }}</td>
+              <td>{{ r['total_orders'] }}</td>
+              <td class="fw-600">R{{ "{:,.2f}".format(r['total_spend']) }}</td>
+              <td style="min-width:120px">
+                <div class="d-flex align-items-center gap-2">
+                  <div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px">
+                    <div style="width:{{ share }}%;height:100%;background:#0f766e;border-radius:3px"></div>
+                  </div>
+                  <span style="font-size:11px;font-weight:600;color:#64748b;width:36px">{{ "{:.0f}".format(share) }}%</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PO TAB -->
+  <div class="tab-pane fade" id="poTab">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-receipt me-2"></i>Purchase Order History</span>
+        <a href="/reports/export/po" class="btn btn-sm btn-outline-success">
+          <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>
+          <tbody>
+            {% for po in po_report %}
+            <tr>
+              <td class="fw-600">PO-{{ po['po_id'] }}</td>
+              <td>{{ po['supplier_name'] or '—' }}</td>
+              <td>{{ po['order_date'] }}</td>
+              <td><span class="badge badge-{{ po['status']|lower }}">{{ po['status'] }}</span></td>
+              <td class="fw-600">R{{ "{:,.2f}".format(po['total_amount']) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

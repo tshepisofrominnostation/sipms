@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Purchase Orders{% endblock %}
+{% block page_title %}Purchase Orders{% endblock %}
+{% block page_subtitle %}Create, approve, and receive stock from suppliers{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPOModal">
+    <i class="bi bi-plus-lg me-1"></i> New Purchase Order
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Status</th><th>Total</th><th>Notes</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for po in purchase_orders %}
+        <tr>
+          <td class="fw-700">PO-{{ po['po_id'] }}</td>
+          <td>{{ po['supplier_name'] or '—' }}</td>
+          <td>{{ po['order_date'] }}</td>
+          <td><span class="badge badge-{{ po['status']|lower }}">{{ po['status'] }}</span></td>
+          <td class="fw-600">R{{ "{:,.2f}".format(po['total_amount']) }}</td>
+          <td style="font-size:12px;color:#64748b">{{ po['notes'] or '—' }}</td>
+          <td>
+            {% if po['status'] == 'Pending' %}
+              <!-- Approve: moves PO from Pending to Approved -->
+              <form method="POST" action="/purchase-orders/{{ po['po_id'] }}/approve" class="d-inline">
+                <button class="btn btn-xs btn-outline-success" style="font-size:11px;padding:3px 8px">
+                  <i class="bi bi-check-lg"></i> Approve
+                </button>
+              </form>
+            {% endif %}
+            {% if po['status'] == 'Approved' %}
+              <!-- Close: marks goods as received and updates stock automatically -->
+              <form method="POST" action="/purchase-orders/{{ po['po_id'] }}/close" class="d-inline"
+                    onsubmit="return confirm('Receive stock for PO-{{ po['po_id'] }}? This will update inventory.')">
+                <button class="btn btn-xs btn-outline-primary" style="font-size:11px;padding:3px 8px">
+                  <i class="bi bi-box-arrow-in-down"></i> Receive Stock
+                </button>
+              </form>
+            {% endif %}
+            {% if po['status'] == 'Closed' %}
+              <span class="text-muted" style="font-size:11px"><i class="bi bi-check-circle-fill text-success me-1"></i>Completed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No purchase orders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ADD PO MODAL -->
+<div class="modal fade" id="addPOModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="POST" action="/purchase-orders/add">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>New Purchase Order</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- PO Header -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-600">Supplier <span class="text-danger">*</span></label>
+              <select name="supplier_id" class="form-select" required>
+                <option value="">Select supplier…</option>
+                {% for s in suppliers %}
+                  <option value="{{ s['supplier_id'] }}">{{ s['supplier_name'] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-600">Order Date</label>
+              <input type="date" name="order_date" class="form-control" value="{{ today }}" required/>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-600">Notes</label>
+              <input type="text" name="notes" class="form-control" placeholder="Optional…"/>
+            </div>
+          </div>
+
+          <!-- Line Items -->
+          <div class="fw-600 mb-2">Line Items</div>
+          <div id="lineItems">
+            <div class="row g-2 mb-2 line-item">
+              <div class="col-5">
+                <select name="product_id[]" class="form-select form-select-sm">
+                  <option value="">Select product…</option>
+                  {% for p in products %}
+                    <option value="{{ p['product_id'] }}">{{ p['product_name'] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-3">
+                <input type="number" name="quantity[]" class="form-control form-control-sm qty-input" placeholder="Qty" min="1"/>
+              </div>
+              <div class="col-3">
+                <input type="number" step="0.01" name="unit_price[]" class="form-control form-control-sm price-input" placeholder="Unit price (R)"/>
+              </div>
+              <div class="col-1">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-line" style="font-size:11px">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" id="addLine" class="btn btn-sm btn-outline-primary mt-2">
+            <i class="bi bi-plus me-1"></i>Add Line
+          </button>
+
+          <div class="mt-3 p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+            <strong>Estimated Total: </strong><span id="poTotal">R0.00</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Create Purchase Order</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Clone the first line item row and add it to the form
+document.getElementById('addLine').addEventListener('click', function() {
+  const firstRow = document.querySelector('.line-item');
+  const newRow   = firstRow.cloneNode(true);
+  // Clear the cloned inputs so they start blank
+  newRow.querySelectorAll('input').forEach(i => i.value = '');
+  newRow.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  document.getElementById('lineItems').appendChild(newRow);
+});
+
+// Remove a line item when the X button is clicked
+document.getElementById('lineItems').addEventListener('click', function(e) {
+  if (e.target.classList.contains('remove-line')) {
+    const rows = document.querySelectorAll('.line-item');
+    if (rows.length > 1) e.target.closest('.line-item').remove();
+    updateTotal();
+  }
+});
+
+// Recalculate the total whenever a quantity or price changes
+document.getElementById('lineItems').addEventListener('input', updateTotal);
+
+function updateTotal() {
+  let total = 0;
+  document.querySelectorAll('.line-item').forEach(row => {
+    const qty   = parseFloat(row.querySelector('.qty-input').value)   || 0;
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    total += qty * price;
+  });
+  document.getElementById('poTotal').textContent = 'R' + total.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
+}
+
+// Set today's date as default on the order date field
+document.querySelector('input[name="order_date"]').value = new Date().toISOString().slice(0, 10);
+</script>
+{% endblock %}

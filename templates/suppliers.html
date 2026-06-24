@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Suppliers{% endblock %}
+{% block page_title %}Suppliers{% endblock %}
+{% block page_subtitle %}Manage your supplier network and purchase history{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+    <i class="bi bi-plus-lg me-1"></i> Add Supplier
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>#</th><th>Supplier Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Products</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in suppliers %}
+        <tr>
+          <td class="text-muted" style="font-size:12px">{{ s['supplier_id'] }}</td>
+          <td class="fw-600">{{ s['supplier_name'] }}</td>
+          <td style="font-size:13px">{{ s['email'] or '—' }}</td>
+          <td style="font-size:13px">{{ s['phone'] or '—' }}</td>
+          <td style="font-size:13px">{{ s['address'] or '—' }}</td>
+          <td><span class="badge bg-light text-dark border">{{ s['product_count'] }}</span></td>
+          <td>
+            <a href="/suppliers/{{ s['supplier_id'] }}/history" class="btn btn-xs btn-outline-secondary me-1" style="font-size:11px;padding:3px 8px">
+              <i class="bi bi-clock-history"></i> History
+            </a>
+            <button class="btn btn-xs btn-outline-primary me-1"
+                    data-bs-toggle="modal" data-bs-target="#editSupplierModal"
+                    data-sid="{{ s['supplier_id'] }}"
+                    data-name="{{ s['supplier_name'] }}"
+                    data-email="{{ s['email'] }}"
+                    data-phone="{{ s['phone'] }}"
+                    data-address="{{ s['address'] }}"
+                    style="font-size:11px;padding:3px 8px">
+              <i class="bi bi-pencil"></i> Edit
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No suppliers yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ADD SUPPLIER MODAL -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="/suppliers/add">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-truck me-2"></i>Add Supplier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Supplier Name <span class="text-danger">*</span></label>
+            <input type="text" name="supplier_name" class="form-control" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Email</label>
+            <input type="email" name="email" class="form-control"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Phone</label>
+            <input type="text" name="phone" class="form-control"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Address</label>
+            <textarea name="address" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Supplier</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- EDIT SUPPLIER MODAL -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" id="editSupplierForm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Supplier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Supplier Name</label>
+            <input type="text" name="supplier_name" id="editSupName" class="form-control" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Email</label>
+            <input type="email" name="email" id="editSupEmail" class="form-control"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Phone</label>
+            <input type="text" name="phone" id="editSupPhone" class="form-control"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Address</label>
+            <textarea name="address" id="editSupAddress" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('editSupplierModal').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  document.getElementById('editSupplierForm').action = '/suppliers/edit/' + btn.dataset.sid;
+  document.getElementById('editSupName').value    = btn.dataset.name;
+  document.getElementById('editSupEmail').value   = btn.dataset.email;
+  document.getElementById('editSupPhone').value   = btn.dataset.phone;
+  document.getElementById('editSupAddress').value = btn.dataset.address;
+});
+</script>
+{% endblock %}

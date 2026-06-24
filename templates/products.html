@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Products{% endblock %}
+{% block page_title %}Products{% endblock %}
+{% block page_subtitle %}Manage your product catalogue and stock levels{% endblock %}
+
+{% block content %}
+
+<!-- TOOLBAR -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <!-- Search & filter form -->
+  <form method="GET" class="d-flex gap-2 flex-wrap">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search products…"
+           class="form-control form-control-sm" style="width:220px"/>
+    <select name="category" class="form-select form-select-sm" style="width:160px">
+      <option value="">All Categories</option>
+      {% for cat in categories %}
+        <option value="{{ cat['category'] }}" {{ 'selected' if cat['category'] == selected_category }}>
+          {{ cat['category'] }}
+        </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary">
+      <i class="bi bi-search me-1"></i>Filter
+    </button>
+    {% if search or selected_category %}
+      <a href="/products" class="btn btn-sm btn-outline-secondary">Clear</a>
+    {% endif %}
+  </form>
+
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+    <i class="bi bi-plus-lg me-1"></i> Add Product
+  </button>
+</div>
+
+<!-- PRODUCTS TABLE -->
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product Name</th>
+          <th>Category</th>
+          <th>Stock</th>
+          <th>Cost Price</th>
+          <th>Sell Price</th>
+          <th>Reorder At</th>
+          <th>Supplier</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr {% if p['quantity'] <= p['reorder_level'] %}class="low-stock"{% endif %}>
+          <td class="text-muted" style="font-size:12px">{{ p['product_id'] }}</td>
+          <td class="fw-600">
+            {{ p['product_name'] }}
+            {% if p['quantity'] <= p['reorder_level'] %}
+              <span class="badge bg-danger ms-1" style="font-size:9px">LOW</span>
+            {% endif %}
+          </td>
+          <td><span class="badge bg-light text-dark border">{{ p['category'] }}</span></td>
+          <td class="fw-700 {{ 'text-danger' if p['quantity'] <= p['reorder_level'] else 'text-success' }}">
+            {{ p['quantity'] }}
+          </td>
+          <td>R{{ "{:,.2f}".format(p['cost_price']) }}</td>
+          <td>R{{ "{:,.2f}".format(p['selling_price']) }}</td>
+          <td class="text-muted">{{ p['reorder_level'] }}</td>
+          <td style="font-size:13px">{{ p['supplier_name'] or '—' }}</td>
+          <td>
+            <!-- Edit button — opens modal pre-filled with this product's data -->
+            <button class="btn btn-xs btn-outline-primary"
+                    data-bs-toggle="modal" data-bs-target="#editProductModal"
+                    data-pid="{{ p['product_id'] }}"
+                    data-name="{{ p['product_name'] }}"
+                    data-category="{{ p['category'] }}"
+                    data-cost="{{ p['cost_price'] }}"
+                    data-sell="{{ p['selling_price'] }}"
+                    data-reorder="{{ p['reorder_level'] }}"
+                    data-supplier="{{ p['supplier_id'] or '' }}"
+                    style="font-size:11px;padding:3px 8px">
+              <i class="bi bi-pencil"></i> Edit
+            </button>
+            <!-- Delete — uses a tiny form so we can use POST (not GET) -->
+            <form method="POST" action="/products/delete/{{ p['product_id'] }}" class="d-inline"
+                  onsubmit="return confirm('Delete {{ p['product_name'] }}?')">
+              <button type="submit" class="btn btn-xs btn-outline-danger" style="font-size:11px;padding:3px 8px">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-4">No products found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ADD PRODUCT MODAL -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="/products/add">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add New Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Product Name <span class="text-danger">*</span></label>
+            <input type="text" name="product_name" class="form-control" required placeholder="e.g. Laptop HP 250 G9"/>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Category</label>
+              <input type="text" name="category" class="form-control" placeholder="Electronics, Furniture…"/>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Initial Quantity</label>
+              <input type="number" name="quantity" class="form-control" value="0" min="0"/>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Cost Price (R)</label>
+              <input type="number" step="0.01" name="cost_price" class="form-control" value="0"/>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Selling Price (R)</label>
+              <input type="number" step="0.01" name="selling_price" class="form-control" value="0"/>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Reorder Level</label>
+              <input type="number" name="reorder_level" class="form-control" value="10" min="0"/>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Supplier</label>
+              <select name="supplier_id" class="form-select">
+                <option value="">— None —</option>
+                {% for s in suppliers %}
+                  <option value="{{ s['supplier_id'] }}">{{ s['supplier_name'] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-plus me-1"></i>Add Product</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- EDIT PRODUCT MODAL -->
+<div class="modal fade" id="editProductModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" id="editProductForm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Product Name</label>
+            <input type="text" name="product_name" id="editName" class="form-control" required/>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Category</label>
+              <input type="text" name="category" id="editCategory" class="form-control"/>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Reorder Level</label>
+              <input type="number" name="reorder_level" id="editReorder" class="form-control"/>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Cost Price (R)</label>
+              <input type="number" step="0.01" name="cost_price" id="editCost" class="form-control"/>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Selling Price (R)</label>
+              <input type="number" step="0.01" name="selling_price" id="editSell" class="form-control"/>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Supplier</label>
+            <select name="supplier_id" id="editSupplier" class="form-select">
+              <option value="">— None —</option>
+              {% for s in suppliers %}
+                <option value="{{ s['supplier_id'] }}">{{ s['supplier_name'] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check me-1"></i>Save Changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// When the Edit modal opens, pull the data- attributes from the clicked button
+// and pre-fill the form fields. This avoids a separate page load per product.
+document.getElementById('editProductModal').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;  // the button that triggered the modal
+  document.getElementById('editProductForm').action = '/products/edit/' + btn.dataset.pid;
+  document.getElementById('editName').value     = btn.dataset.name;
+  document.getElementById('editCategory').value = btn.dataset.category;
+  document.getElementById('editCost').value     = btn.dataset.cost;
+  document.getElementById('editSell').value     = btn.dataset.sell;
+  document.getElementById('editReorder').value  = btn.dataset.reorder;
+  document.getElementById('editSupplier').value = btn.dataset.supplier;
+});
+</script>
+{% endblock %}
