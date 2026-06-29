@@ -1,15 +1,15 @@
-# wsgi.py — entry point for Gunicorn on Render.com
+# wsgi.py — Production entry point for Gunicorn (Railway / Render)
 #
-# Gunicorn (Green Unicorn) is the production WSGI server.
-# It handles multiple simultaneous requests by running
-# multiple worker processes. Never use Flask's built-in
-# server (app.run) in production — it can only handle
-# one request at a time.
+# Gunicorn is the production WSGI server that handles concurrent requests
+# via multiple worker processes. Flask's built-in app.run() is single-threaded
+# and only suitable for local development.
 #
-# Render.com looks for 'app' in this file via:
-#   gunicorn wsgi:app
+# Railway auto-injects $PORT. The start command in nixpacks.toml is:
+#   gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2
 
 from app import app
 
 if __name__ == '__main__':
-    app.run()
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
